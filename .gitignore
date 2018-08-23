@@ -1,0 +1,6 @@
+/Alferd Spritesheet Unpacker
+/.idea
+/__pycache__/*.pyc
+/venv
+/SpriteSheetPacker
+/__pycache__
