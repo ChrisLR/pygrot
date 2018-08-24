@@ -33,7 +33,7 @@ class GameClient(object):
         self.client.listen()
 
     def initialize(self):
-        self.game = game.Game()
+        self.game = game.Game(self)
         self.client.send("KEK")
 
     def connect(self):
@@ -46,4 +46,4 @@ class GameClient(object):
         pass
 
     def send_input(self, symbol, modifiers):
-        pass
+        self.client.send("TEST".encode("utf-8"))

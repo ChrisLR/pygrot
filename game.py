@@ -4,7 +4,8 @@ from joystick import JoystickMotion
 
 
 class Game(object):
-    def __init__(self):
+    def __init__(self, client):
+        self.client = client
         self.player = None
         self.joysticks = None
         self.batch = None
@@ -31,6 +32,8 @@ class Game(object):
                 self.player.move_to = px + 16, py
             if symbol == pyglet.window.key.DOWN:
                 self.player.move_to = px, py - 16
+
+        self.client.send_input(symbol, modifiers)
 
     def initialize_game(self):
         from spriteloader import SpriteLoader
