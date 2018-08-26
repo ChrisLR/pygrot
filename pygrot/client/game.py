@@ -1,6 +1,6 @@
 import pyglet
 
-from joystick import JoystickMotion
+from pygrot.client.input.joystick import JoystickMotion
 
 
 class Game(object):
@@ -36,8 +36,8 @@ class Game(object):
         self.client.send_input(symbol, modifiers)
 
     def initialize_game(self):
-        from spriteloader import SpriteLoader
-        from monsters import Skeleton
+        from pygrot.client.graphics.spriteloader import SpriteLoader
+        from pygrot.gamedata.monsters import Skeleton
         spriteloader = SpriteLoader()
         skeleton_template = Skeleton(spriteloader)
         skeleton = skeleton_template.create((16, 16))

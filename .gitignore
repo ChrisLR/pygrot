@@ -4,3 +4,6 @@
 /venv
 /SpriteSheetPacker
 /__pycache__
+/pygrot/__pycache__/*.pyc
+/pygrot/client/__pycache__
+*.pyc

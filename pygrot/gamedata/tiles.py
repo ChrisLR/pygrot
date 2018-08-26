@@ -1,7 +1,3 @@
-import pyglet
-from character import GameObject
-
-
 class Floor(object):
     name = ""
     center_pos = (0, 0)
@@ -43,7 +39,6 @@ class Floor(object):
 
     def get_align(self, position, map):
         px, py = position
-
 
     def is_nw(self, position, map):
         required = {

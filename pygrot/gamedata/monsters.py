@@ -1,6 +1,5 @@
 import pyglet
-import character
-import random
+from pygrot.gamedata import character
 
 
 class Monster(object):

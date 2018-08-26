@@ -11,8 +11,8 @@ class SpriteLoader(object):
 
     def load_spritesheets(self):
         images = [
-            ("Undead0", "DawnLike/Characters/Undead0.png"),
-            ("Undead1", "DawnLike/Characters/Undead1.png"),
+            ("Undead0", "client/graphics/DawnLike/Characters/Undead0.png"),
+            ("Undead1", "client/graphics/DawnLike/Characters/Undead1.png"),
         ]
         self.spritesheets = {
             name: SpriteSheet(name, path) for name, path in images

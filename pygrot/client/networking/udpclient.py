@@ -1,8 +1,6 @@
-import socket
-import threading
-import game
+from pygrot.client import game
 from twisted.internet import reactor
-from networking.twistedudp import Listen
+from pygrot.client.networking.twistedudp import Listen
 
 
 class UDPClient(object):
