@@ -14,7 +14,8 @@ class UDPClient(object):
         self.datagram_protocol = Listen(self)
 
     def handle_message(self, data, host, port):
-        print("I should do some shit here")
+        message = data.decode("utf8")
+        print("Client Received:" + message)
 
     def listen(self):
         reactor.listenUDP(self.CLIENT_PORT, self.datagram_protocol)
