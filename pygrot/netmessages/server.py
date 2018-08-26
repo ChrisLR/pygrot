@@ -8,12 +8,12 @@ class ServerMessage(BaseMessage):
 class JoinAccept(ServerMessage):
     type_no = 4
 
-    def __init__(self, entity_id):
+    def __init__(self, entity):
         super().__init__()
-        self.entity_id = entity_id
+        self.entity = entity
 
     def to_json(self):
-        return {"entity_id": self.entity_id}
+        return {"uid": self.entity.uid, "name": self.entity.name, "position": self.entity.position}
 
 
 class KickNotification(ServerMessage):

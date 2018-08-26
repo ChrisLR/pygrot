@@ -24,6 +24,6 @@ class MessageCapsule(BaseMessage, metaclass=abc.ABCMeta):
     def to_json(self):
         json_messages = [{"type_no": message.type_no, "message": message.to_json()}
                          for message in self.messages]
-        json_message = {"sender": self.sender, "netmessages": json_messages}
+        json_message = {"sender": self.sender, "sub_messages": json_messages}
 
         return json.dumps(json_message)

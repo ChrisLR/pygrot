@@ -32,11 +32,11 @@ class JoinRequest(ClientMessage):
 class KeyInput(ClientMessage):
     type_no = 3
 
-    def __init__(self, symbol, modifiers, username):
+    def __init__(self, symbol, modifiers, entity_uid):
         super().__init__()
         self.symbol = symbol
         self.modifiers = modifiers
-        self.username = username
+        self.entity_uid = entity_uid
 
     def to_json(self):
-        return {"username": self.username, "symbol": self.symbol, "modifiers": self.modifiers}
+        return {"entity_uid": self.entity_uid, "symbol": self.symbol, "modifiers": self.modifiers}
