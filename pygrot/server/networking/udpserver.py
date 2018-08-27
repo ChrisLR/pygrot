@@ -81,13 +81,13 @@ class Server(object):
         self.entities[new_entity.uid] = new_entity
         self.send(new_client, (accept_message, update_message))
 
-    def disconnect_client(self, client):
-        disconnect = listing.DisconnectRequest("Fh")
-        self.send(client, (disconnect, ))
+    def disconnect_client(self, client, message):
+        del self.registered_clients[client.address]
+        del self.entities[client.remote_entity.uid]
 
     def complete_update(self):
         update_message = listing.CompleteUpdate(self.entities)
-        for address, client in self.registered_clients.values():
+        for address, client in self.registered_clients.items():
             self.send(client, (update_message,))
 
     def handle_input(self, client, message):
@@ -106,6 +106,8 @@ class Server(object):
             px += 16
         if symbol == pyglet.window.key.DOWN:
             py -= 16
+
+        entity.position = (px, py)
 
     def send(self, client, messages):
         self.echo_protocol.send(client, messages)
