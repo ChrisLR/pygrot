@@ -1,48 +1,11 @@
-import json
 import uuid
-import pyglet
 
+import pyglet
 from twisted.internet import reactor
-from twisted.internet.protocol import DatagramProtocol
 
 from pygrot.gamedata import monsters
 from pygrot.netmessages import listing
-
-
-class Echo(DatagramProtocol):
-    def datagramReceived(self, data, info):
-        messages = build_message(data)
-
-        return self.listener.handle_messages(info, messages)
-
-    def send(self, client, messages):
-        capsule = listing.MessageCapsule(messages, "SERVER")
-        capsule_json = capsule.to_json()
-        encoded_json_capsule = capsule_json.encode("utf8")
-        self.echo_protocol.transport.write(encoded_json_capsule, client.address)
-
-
-def build_message(data):
-    decoded_data = data.decode("utf8")
-    message_capsule = json.loads(decoded_data)
-    messages = message_capsule.get("sub_messages")
-    if messages is None:
-        print("Unrecognized message " + decoded_data)
-        return
-
-    built_messages = []
-    for message in messages:
-        type_no = message.get("type_no")
-        sub_message = message.get("message")
-        if type_no is None or sub_message is None:
-            print("Unrecognized sub message " + message)
-            continue
-
-        mapped_type = listing.message_mapping.get(type_no)
-        instanced_type = mapped_type(**sub_message)
-        built_messages.append(instanced_type)
-
-    return built_messages
+from pygrot.netmessages.echoprotocol import Echo
 
 
 class Server(object):
@@ -58,6 +21,11 @@ class Server(object):
         self.echo_protocol = Echo() if echo_protocol is None else echo_protocol
         self.echo_protocol.listener = self
         self.registered_clients = {}
+
+    def initialize(self):
+        reactor.listenUDP(9001, server.echo_protocol)
+        reactor.callLater(1, server.complete_update)
+        reactor.run()
 
     def handle_messages(self, sender, messages):
         client = self.registered_clients.get(sender)
@@ -110,7 +78,7 @@ class Server(object):
         entity.position = (px, py)
 
     def send(self, client, messages):
-        self.echo_protocol.send(client, messages)
+        self.echo_protocol.send(client, messages, "SERVER")
 
 
 class RemoteClient(object):
@@ -134,6 +102,4 @@ def create_new_entity():
 
 if __name__ == '__main__':
     server = Server()
-    reactor.listenUDP(9001, server.echo_protocol)
-    reactor.callLater(1, server.complete_update)
-    reactor.run()
+    server.initialize()

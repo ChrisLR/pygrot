@@ -1,6 +1,8 @@
 import pyglet
 
 from pygrot.client.input.joystick import JoystickMotion
+from pygrot.client.graphics.spriteloader import SpriteLoader
+from pygrot.gamedata.monsters import Skeleton
 
 
 class Game(object):
@@ -13,6 +15,7 @@ class Game(object):
         self.window = None
         self.initialize_ui()
         self.initialize_game()
+        self.spriteloader = None
         pyglet.clock.schedule_interval(self.update, 1 / 60)
         pyglet.app.run()
 
@@ -35,14 +38,16 @@ class Game(object):
 
         self.client.send_input(symbol, modifiers)
 
-    def initialize_game(self):
-        from pygrot.client.graphics.spriteloader import SpriteLoader
-        from pygrot.gamedata.monsters import Skeleton
-        spriteloader = SpriteLoader()
-        skeleton_template = Skeleton(spriteloader)
-        skeleton = skeleton_template.create((16, 16))
+    def set_player_entity(self, uid, name, position):
+        # TODO This is not always skeleton, but hey, baby steps
+        skeleton_template = Skeleton(self.spriteloader)
+        skeleton = skeleton_template.create(position)
         skeleton.animations.play("idle", self.batch, None)
+        skeleton.uid = uid
         self.player = skeleton
+
+    def initialize_game(self):
+        self.spriteloader = SpriteLoader()
 
     def initialize_ui(self):
         self.batch = pyglet.graphics.Batch()
