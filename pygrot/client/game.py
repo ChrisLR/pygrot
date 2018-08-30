@@ -18,13 +18,12 @@ class Game(object):
 
     def start(self):
         self.initialize_ui()
-        pyglet.clock.schedule_interval(self.update, 1 / 60)
+        pyglet.clock.schedule_interval(self.update, 1 / 1000)
         pyglet.app.run()
 
     def on_draw(self):
         self.window.clear()
         self.batch.draw()
-        self.clock.draw()
 
     def on_key_press(self, symbol, modifiers):
         if not self.player or not self.player.move_to:
@@ -46,7 +45,6 @@ class Game(object):
 
     def initialize_ui(self):
         self.batch = pyglet.graphics.Batch()
-        self.clock = pyglet.clock.ClockDisplay(interval=1.0 / 60.0)
         self.window = pyglet.window.Window()
         self.window.event(self.on_draw)
         self.window.event(self.on_key_press)
@@ -64,14 +62,18 @@ class Game(object):
 
     def update(self, dt):
         self.client.update()
-        if self.player:
-            self.player.update()
+        for entity in self.entities.values():
+            entity.update()
 
     def server_update(self, remote_entities):
         for remote_entity in remote_entities.values():
-            if remote_entity.uid in self.entities:
-                local_entity = self.entities.get(remote_entity.uid)
-                if local_entity.location.tuple() != remote_entity.position:
-                    local_entity.move_to = remote_entity.position
+            remote_uid = remote_entity["uid"]
+            remote_name = remote_entity["name"]
+            remote_position = remote_entity["position"]
+            remote_position = (remote_position[0], remote_position[1])
+            if remote_uid in self.entities:
+                local_entity = self.entities.get(remote_uid)
+                if local_entity.location.tuple() != remote_position:
+                    local_entity.move_to = remote_position
             else:
-                self.spawn_entity(remote_entity.uid, remote_entity.name, remote_entity.position)
+                self.spawn_entity(remote_uid, remote_name, remote_position)

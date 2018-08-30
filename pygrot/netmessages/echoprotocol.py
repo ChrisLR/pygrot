@@ -19,30 +19,35 @@ class CommSocket(threading.Thread):
     def run(self):
         print("Running CommSocket binding on " + str(self.local_port))
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        print(self.in_queue)
         try:
             sock.bind(("localhost", self.local_port))
+            sock.setblocking(False)
             while True:
                 try:
-                    interrupt = self.cancel_queue.get_nowait()
-                    if interrupt:
-                        print('GOT INTERRUPT')
-                        return
+                    if not self.cancel_queue.empty():
+                        interrupt = self.cancel_queue.get()
+                        if interrupt:
+                            print('Got interrupt')
+                            return
                 except queue.Empty:
                     pass
 
                 try:
-                    messages, address = self.out_queue.get_nowait()
-                    if messages:
-                        print('Got OUT messages')
-                        sock.sendto(messages, address)
+                    if not self.out_queue.empty():
+                        messages, address = self.out_queue.get()
+                        if messages:
+                            print('Out Messages are not empty')
+                            sock.sendto(messages, address)
                 except queue.Empty:
                     pass
 
-                data, server = sock.recvfrom(4096)
-                if data:
-                    print('Put messages in the IN queue')
-                    self.in_queue.put((server, data))
+                try:
+                    data, server = sock.recvfrom(4096)
+                    if data:
+                        print('Put messages in the IN queue')
+                        self.in_queue.put((server, data))
+                except BlockingIOError:
+                    pass
         finally:
             sock.close()
 
@@ -52,20 +57,19 @@ class Echo(object):
         self.in_queue = queue.Queue()
         self.out_queue = queue.Queue()
         self.cancel_queue = queue.Queue()
-        print(self.in_queue)
         self.comm_socket = CommSocket(local_port, target_address, target_port, self.in_queue, self.out_queue, self.cancel_queue)
 
     def get(self):
         try:
-            remote_info, raw_messages = self.in_queue.get_nowait()
-            messages = build_message(raw_messages)
-            print("received messages")
-            return remote_info, messages
+            if not self.in_queue.empty():
+                remote_info, raw_messages = self.in_queue.get()
+                messages = build_message(raw_messages)
+                return remote_info, messages
+            return None, None
         except queue.Empty:
             return None, None
 
     def send(self, client, messages, sender):
-        print("Sending messages")
         capsule = listing.MessageCapsule(messages, sender)
         capsule_json = capsule.to_json()
         encoded_json_capsule = capsule_json.encode("utf8")

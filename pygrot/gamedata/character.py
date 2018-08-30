@@ -12,7 +12,7 @@ class GameObject(object):
 
     def update(self):
         self.animations.current.position = self.location.tuple()
-        if self.move_to:
+        if self.move_to and self.move_to != (0, 0):
             x, y = self.location.tuple()
             mx, my = self.move_to
             step_x, step_y = x - mx, y - my

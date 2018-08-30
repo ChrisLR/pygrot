@@ -92,7 +92,7 @@ class Server(object):
         self.started = True
         while self.started:
             self.update()
-            time.sleep(0.1)
+            time.sleep(0.01)
 
 
 class RemoteClient(object):

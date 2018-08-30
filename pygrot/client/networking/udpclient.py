@@ -39,7 +39,7 @@ class GameClient(object):
         pass
 
     def on_complete_update(self, message):
-        pass
+        self.receive_update(message.entities)
 
     def initialize_game(self):
         self.game = game.Game(self)
