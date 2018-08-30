@@ -1,8 +1,12 @@
 import pyglet
+import os
 
 
 class SpriteLoader(object):
     def __init__(self):
+        res_dir = str(os.path.dirname(__file__).split('pygrot')[0]) + "pygrot/pygrot/client/graphics/DawnLike"
+        pyglet.resource.path = [res_dir + '/Characters']
+        pyglet.resource.reindex()
         self.spritesheets = None
         self.load_spritesheets()
 
@@ -11,8 +15,8 @@ class SpriteLoader(object):
 
     def load_spritesheets(self):
         images = [
-            ("Undead0", "client/graphics/DawnLike/Characters/Undead0.png"),
-            ("Undead1", "client/graphics/DawnLike/Characters/Undead1.png"),
+            ("Undead0", "Undead0.png"),
+            ("Undead1", "Undead1.png"),
         ]
         self.spritesheets = {
             name: SpriteSheet(name, path) for name, path in images

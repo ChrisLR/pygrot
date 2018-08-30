@@ -1,19 +1,83 @@
 import json
-from twisted.internet.protocol import DatagramProtocol
+import socket
+import threading
+import queue
 from pygrot.netmessages import listing
+import time
 
 
-class Echo(DatagramProtocol):
-    def datagramReceived(self, data, info):
-        messages = build_message(data)
+class CommSocket(threading.Thread):
+    def __init__(self, local_port, target_address, target_port, in_queue, out_queue, cancel_queue, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.local_port = local_port
+        self.target_address = target_address
+        self.target_port = target_port
+        self.in_queue = in_queue
+        self.out_queue = out_queue
+        self.cancel_queue = cancel_queue
 
-        return self.listener.handle_messages(info, messages)
+    def run(self):
+        print("Running CommSocket binding on " + str(self.local_port))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        print(self.in_queue)
+        try:
+            sock.bind(("localhost", self.local_port))
+            while True:
+                try:
+                    interrupt = self.cancel_queue.get_nowait()
+                    if interrupt:
+                        print('GOT INTERRUPT')
+                        return
+                except queue.Empty:
+                    pass
+
+                try:
+                    messages, address = self.out_queue.get_nowait()
+                    if messages:
+                        print('Got OUT messages')
+                        sock.sendto(messages, address)
+                except queue.Empty:
+                    pass
+
+                data, server = sock.recvfrom(4096)
+                if data:
+                    print('Put messages in the IN queue')
+                    self.in_queue.put((server, data))
+        finally:
+            sock.close()
+
+
+class Echo(object):
+    def __init__(self, local_port, target_address, target_port):
+        self.in_queue = queue.Queue()
+        self.out_queue = queue.Queue()
+        self.cancel_queue = queue.Queue()
+        print(self.in_queue)
+        self.comm_socket = CommSocket(local_port, target_address, target_port, self.in_queue, self.out_queue, self.cancel_queue)
+
+    def get(self):
+        try:
+            remote_info, raw_messages = self.in_queue.get_nowait()
+            messages = build_message(raw_messages)
+            print("received messages")
+            return remote_info, messages
+        except queue.Empty:
+            return None, None
 
     def send(self, client, messages, sender):
+        print("Sending messages")
         capsule = listing.MessageCapsule(messages, sender)
         capsule_json = capsule.to_json()
         encoded_json_capsule = capsule_json.encode("utf8")
-        self.echo_protocol.transport.write(encoded_json_capsule, client.address)
+        self.out_queue.put((encoded_json_capsule, client.address))
+
+    def stop(self):
+        self.cancel_queue.put("STOPPING NOW")
+
+    def start(self):
+        print("Comm Socket starting")
+        self.comm_socket.start()
+        print("Comm Socket Started")
 
 
 def build_message(data):

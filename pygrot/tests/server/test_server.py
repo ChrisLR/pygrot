@@ -73,7 +73,7 @@ class FakeProtocol(object):
     def __init__(self):
         self.intercepted_messages = []
 
-    def send(self, client, messages):
+    def send(self, client, messages, sender):
         self.intercepted_messages.append((client, messages))
 
 

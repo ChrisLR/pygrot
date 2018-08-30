@@ -31,7 +31,6 @@ class GameObject(object):
             self.move_to = None
 
 
-
 class Animations(object):
     def __init__(self):
         self._animations = {}

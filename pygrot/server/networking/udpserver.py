@@ -1,7 +1,7 @@
+import time
 import uuid
 
 import pyglet
-from twisted.internet import reactor
 
 from pygrot.gamedata import monsters
 from pygrot.netmessages import listing
@@ -18,14 +18,9 @@ class Server(object):
             listing.KeyInput: self.handle_input,
             listing.DisconnectRequest: self.disconnect_client,
         }
-        self.echo_protocol = Echo() if echo_protocol is None else echo_protocol
-        self.echo_protocol.listener = self
+        self.echo_protocol = Echo(self.SERVER_PORT, 'localhost', self.CLIENT_PORT) if echo_protocol is None else echo_protocol
         self.registered_clients = {}
-
-    def initialize(self):
-        reactor.listenUDP(9001, server.echo_protocol)
-        reactor.callLater(1, server.complete_update)
-        reactor.run()
+        self.started = False
 
     def handle_messages(self, sender, messages):
         client = self.registered_clients.get(sender)
@@ -37,6 +32,10 @@ class Server(object):
                 return self.accept_new_client(sender, join_request)
 
         for message in messages:
+            if isinstance(message, listing.JoinRequest):
+                del self.registered_clients[sender]
+                return self.accept_new_client(sender, message)
+
             handler = self.message_handlers.get(type(message))
             handler(client, message)
 
@@ -52,6 +51,13 @@ class Server(object):
     def disconnect_client(self, client, message):
         del self.registered_clients[client.address]
         del self.entities[client.remote_entity.uid]
+
+    def update(self):
+        remote_info, messages = self.echo_protocol.get()
+        if remote_info is not None and messages is not None:
+            self.handle_messages(remote_info, messages)
+
+        self.complete_update()
 
     def complete_update(self):
         update_message = listing.CompleteUpdate(self.entities)
@@ -80,6 +86,14 @@ class Server(object):
     def send(self, client, messages):
         self.echo_protocol.send(client, messages, "SERVER")
 
+    def start(self):
+        print("Server starting echo protocol")
+        self.echo_protocol.start()
+        self.started = True
+        while self.started:
+            self.update()
+            time.sleep(0.1)
+
 
 class RemoteClient(object):
     """Client as Seen from the Server"""
@@ -97,9 +111,9 @@ class AbstractEntity(object):
 
 
 def create_new_entity():
-    return AbstractEntity(uuid.uuid4(), monsters.Skeleton.name, (0, 0))
+    return AbstractEntity(uuid.uuid4().urn, monsters.Skeleton.name, (0, 0))
 
 
 if __name__ == '__main__':
     server = Server()
-    server.initialize()
+    server.start()

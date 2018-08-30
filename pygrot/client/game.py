@@ -13,9 +13,11 @@ class Game(object):
         self.batch = None
         self.clock = None
         self.window = None
+        self.spriteloader = SpriteLoader()
+        self.entities = {}
+
+    def start(self):
         self.initialize_ui()
-        self.initialize_game()
-        self.spriteloader = None
         pyglet.clock.schedule_interval(self.update, 1 / 60)
         pyglet.app.run()
 
@@ -25,29 +27,22 @@ class Game(object):
         self.clock.draw()
 
     def on_key_press(self, symbol, modifiers):
-        if not self.player.move_to:
-            px, py = self.player.location.tuple()
-            if symbol == pyglet.window.key.LEFT:
-                self.player.move_to = px - 16, py
-            if symbol == pyglet.window.key.UP:
-                self.player.move_to = px, py + 16
-            if symbol == pyglet.window.key.RIGHT:
-                self.player.move_to = px + 16, py
-            if symbol == pyglet.window.key.DOWN:
-                self.player.move_to = px, py - 16
-
-        self.client.send_input(symbol, modifiers)
+        if not self.player or not self.player.move_to:
+            self.client.send_input(symbol, modifiers)
 
     def set_player_entity(self, uid, name, position):
+        skeleton = self.spawn_entity(uid, name, position)
+        self.player = skeleton
+
+    def spawn_entity(self, uid, name, position):
         # TODO This is not always skeleton, but hey, baby steps
         skeleton_template = Skeleton(self.spriteloader)
         skeleton = skeleton_template.create(position)
         skeleton.animations.play("idle", self.batch, None)
         skeleton.uid = uid
-        self.player = skeleton
+        self.entities[uid] = skeleton
 
-    def initialize_game(self):
-        self.spriteloader = SpriteLoader()
+        return skeleton
 
     def initialize_ui(self):
         self.batch = pyglet.graphics.Batch()
@@ -68,4 +63,15 @@ class Game(object):
             joysticky = JoystickMotion(joystick)
 
     def update(self, dt):
-        self.player.update()
+        self.client.update()
+        if self.player:
+            self.player.update()
+
+    def server_update(self, remote_entities):
+        for remote_entity in remote_entities.values():
+            if remote_entity.uid in self.entities:
+                local_entity = self.entities.get(remote_entity.uid)
+                if local_entity.location.tuple() != remote_entity.position:
+                    local_entity.move_to = remote_entity.position
+            else:
+                self.spawn_entity(remote_entity.uid, remote_entity.name, remote_entity.position)

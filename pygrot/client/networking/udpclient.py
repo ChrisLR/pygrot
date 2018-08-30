@@ -1,5 +1,4 @@
 from pygrot.client import game
-from twisted.internet import reactor
 from pygrot.netmessages.echoprotocol import Echo
 from pygrot.netmessages import listing
 
@@ -10,28 +9,30 @@ class AbstractServer(object):
 
 
 class GameClient(object):
-    IP = "127.0.0.1"
+    IP = "localhost"
     CLIENT_PORT = 9000
     SERVER_PORT = 9001
 
-    def __init__(self):
+    def __init__(self, echo_protocol=None):
         self.message_handlers = {
             listing.JoinAccept: self.on_join_accepted,
             listing.KickNotification: self.on_kick_notification,
             listing.CompleteUpdate: self.on_complete_update
         }
-        self.echo_protocol = Echo()
-        self.entity_id = None
+        self.echo_protocol = Echo(self.CLIENT_PORT, self.IP, self.SERVER_PORT) if echo_protocol is None else echo_protocol
+        self.entity_uid = None
         self.game = None
         self.server = None
-        reactor.callInThread(self.initialize_game)
-        self.listen()
+
+    def start(self):
+        self.echo_protocol.start()
+        self.initialize_game()
 
     def on_join_accepted(self, message):
-        uid = message.uid
-        name = message.name
-        position = message.position
-        self.entity_id = uid
+        uid = message.entity['uid']
+        name = message.entity['name']
+        position = message.entity['position']
+        self.entity_uid = uid
         self.game.set_player_entity(uid, name, position)
 
     def on_kick_notification(self, message):
@@ -43,6 +44,7 @@ class GameClient(object):
     def initialize_game(self):
         self.game = game.Game(self)
         self.connect()
+        self.game.start()
 
     def connect(self):
         if not self.server:
@@ -55,14 +57,19 @@ class GameClient(object):
             message = listing.DisconnectRequest("")
             self.send((message,))
 
+    def update(self):
+        remote_info, messages = self.echo_protocol.get()
+        if remote_info is not None and messages is not None:
+            self.handle_messages(remote_info, messages)
+
     def receive_update(self, entities):
-        pass
+        self.game.server_update(entities)
 
     def send_input(self, symbol, modifiers):
-        if not self.entity_id:
+        if not self.entity_uid:
             return
 
-        message = listing.KeyInput(symbol, modifiers, self.entity_id)
+        message = listing.KeyInput(symbol, modifiers, self.entity_uid)
         self.send((message,))
 
     def send(self, messages):
@@ -70,12 +77,8 @@ class GameClient(object):
 
     def handle_messages(self, info, messages):
         for message in messages:
-            handler = self.message_handlers.get(message)
+            handler = self.message_handlers.get(type(message))
             if handler is None:
                 print("Unhandled message " + str(message))
                 continue
             handler(message)
-
-    def listen(self):
-        reactor.listenUDP(self.CLIENT_PORT, self.echo_protocol)
-        reactor.run()

@@ -13,7 +13,7 @@ class JoinAccept(ServerMessage):
         self.entity = entity
 
     def to_json(self):
-        return {"uid": self.entity.uid, "name": self.entity.name, "position": self.entity.position}
+        return {"entity": {"uid": self.entity.uid, "name": self.entity.name, "position": self.entity.position}}
 
 
 class KickNotification(ServerMessage):
@@ -35,4 +35,7 @@ class CompleteUpdate(ServerMessage):
         self.entities = entities
 
     def to_json(self):
-        return {"reason": self.reason}
+        return {"entities": {entity.uid: self.entity_as_json(entity) for entity in self.entities.values()}}
+
+    def entity_as_json(self, entity):
+        return {"uid": entity.uid, "name": entity.name, "position": entity.position}
