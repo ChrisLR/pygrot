@@ -34,12 +34,16 @@ class ListenerSocket(threading.Thread):
         print('Binding listener socket on ' + str(self.local_port))
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
-            sock.bind(("localhost", self.local_port))
+            sock.settimeout(5.0)
+            sock.bind(("0.0.0.0", self.local_port))
             while True:
-                data, server = sock.recvfrom(4096)
-                if data:
-                    print('Put messages in the IN queue')
-                    self.in_queue.put((server, data))
+                try:
+                    data, server = sock.recvfrom(4096)
+                    if data:
+                        print('Put messages in the IN queue')
+                        self.in_queue.put((server, data))
+                except socket.timeout:
+                    pass
                 if self.cancel:
                     break
         finally:
@@ -57,10 +61,13 @@ class SenderSocket(threading.Thread):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         try:
             while True:
-                messages, address = self.out_queue.get()
-                if messages:
-                    sock.sendto(messages, address)
-                    print('Sent ' + str(messages) + ' to ' + str(address))
+                try:
+                    messages, address = self.out_queue.get(timeout=5)
+                    if messages:
+                        sock.sendto(messages, address)
+                        print('Sent ' + str(messages) + ' to ' + str(address))
+                except queue.Empty:
+                    pass
 
                 if self.cancel:
                     break
