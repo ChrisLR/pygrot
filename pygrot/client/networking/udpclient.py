@@ -1,6 +1,8 @@
+import random
+
 from pygrot.client import game
-from pygrot.netmessages.echoprotocol import Echo
 from pygrot.netmessages import listing
+from pygrot.netmessages.echoprotocol import Echo
 
 
 class AbstractServer(object):
@@ -14,12 +16,14 @@ class GameClient(object):
     SERVER_PORT = 9001
 
     def __init__(self, echo_protocol=None):
+
+        self.this_port = random.randint(9002, 9100)
         self.message_handlers = {
             listing.JoinAccept: self.on_join_accepted,
             listing.KickNotification: self.on_kick_notification,
             listing.CompleteUpdate: self.on_complete_update
         }
-        self.echo_protocol = Echo(self.CLIENT_PORT, self.IP, self.SERVER_PORT) if echo_protocol is None else echo_protocol
+        self.echo_protocol = Echo(self.this_port) if echo_protocol is None else echo_protocol
         self.entity_uid = None
         self.game = None
         self.server = None
@@ -49,7 +53,8 @@ class GameClient(object):
     def connect(self):
         if not self.server:
             self.server = AbstractServer((self.IP, self.SERVER_PORT))
-            message = listing.JoinRequest("")
+
+            message = listing.JoinRequest(self.this_port)
             self.send((message,))
 
     def disconnect(self):

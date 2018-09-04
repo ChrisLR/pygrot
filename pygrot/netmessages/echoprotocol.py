@@ -6,6 +6,68 @@ from pygrot.netmessages import listing
 import time
 
 
+class AtomicBool(object):
+    def __init__(self, default=False):
+        self.value = default
+        self.lock = threading.Lock()
+
+    def get(self):
+        return bool(self)
+
+    def set(self, value):
+        with self.lock:
+            self.value = value
+
+    def __bool__(self):
+        with self.lock:
+            return self.value
+
+
+class ListenerSocket(threading.Thread):
+    def __init__(self, local_port, in_queue, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.local_port = local_port
+        self.in_queue = in_queue
+        self.cancel = AtomicBool()
+
+    def run(self):
+        print('Binding listener socket on ' + str(self.local_port))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            sock.bind(("localhost", self.local_port))
+            while True:
+                data, server = sock.recvfrom(4096)
+                if data:
+                    print('Put messages in the IN queue')
+                    self.in_queue.put((server, data))
+                if self.cancel:
+                    break
+        finally:
+            sock.close()
+
+
+class SenderSocket(threading.Thread):
+    def __init__(self, out_queue, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.out_queue = out_queue
+        self.cancel = AtomicBool()
+
+    def run(self):
+        print('Sender Socket waiting for messages')
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            while True:
+                messages, address = self.out_queue.get()
+                if messages:
+                    sock.sendto(messages, address)
+                    print('Sent ' + str(messages) + ' to ' + str(address))
+
+                if self.cancel:
+                    break
+        finally:
+            sock.close()
+
+
 class CommSocket(threading.Thread):
     def __init__(self, local_port, target_address, target_port, in_queue, out_queue, cancel_queue, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -53,11 +115,11 @@ class CommSocket(threading.Thread):
 
 
 class Echo(object):
-    def __init__(self, local_port, target_address, target_port):
+    def __init__(self, local_port):
         self.in_queue = queue.Queue()
         self.out_queue = queue.Queue()
-        self.cancel_queue = queue.Queue()
-        self.comm_socket = CommSocket(local_port, target_address, target_port, self.in_queue, self.out_queue, self.cancel_queue)
+        self.listener_socket = ListenerSocket(local_port, self.in_queue)
+        self.sender_socket = SenderSocket(self.out_queue)
 
     def get(self):
         try:
@@ -76,11 +138,15 @@ class Echo(object):
         self.out_queue.put((encoded_json_capsule, client.address))
 
     def stop(self):
-        self.cancel_queue.put("STOPPING NOW")
+        self.listener_socket.cancel.set(True)
+        self.sender_socket.cancel.set(True)
 
     def start(self):
         print("Comm Socket starting")
-        self.comm_socket.start()
+        self.listener_socket.cancel.set(False)
+        self.listener_socket.start()
+        self.sender_socket.cancel.set(False)
+        self.sender_socket.start()
         print("Comm Socket Started")
 
 

@@ -21,12 +21,12 @@ class DisconnectRequest(ClientMessage):
 class JoinRequest(ClientMessage):
     type_no = 2
 
-    def __init__(self, username):
+    def __init__(self, port):
         super().__init__()
-        self.username = username
+        self.port = port
 
     def to_json(self):
-        return {"username": self.username}
+        return {"port": self.port}
 
 
 class KeyInput(ClientMessage):

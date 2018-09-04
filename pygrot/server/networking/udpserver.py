@@ -18,9 +18,10 @@ class Server(object):
             listing.KeyInput: self.handle_input,
             listing.DisconnectRequest: self.disconnect_client,
         }
-        self.echo_protocol = Echo(self.SERVER_PORT, 'localhost', self.CLIENT_PORT) if echo_protocol is None else echo_protocol
+        self.echo_protocol = Echo(self.SERVER_PORT) if echo_protocol is None else echo_protocol
         self.registered_clients = {}
         self.started = False
+        self.changed = False
 
     def handle_messages(self, sender, messages):
         client = self.registered_clients.get(sender)
@@ -41,7 +42,10 @@ class Server(object):
 
     def accept_new_client(self, sender, message):
         new_entity = create_new_entity()
-        new_client = RemoteClient(sender, new_entity)
+        ip_address, _ = sender
+        port = message.port
+
+        new_client = RemoteClient((ip_address, port), new_entity)
         self.registered_clients[sender] = new_client
         accept_message = listing.JoinAccept(new_entity)
         update_message = listing.CompleteUpdate(self.entities)
@@ -60,11 +64,17 @@ class Server(object):
         self.complete_update()
 
     def complete_update(self):
+        if not self.changed:
+            return
+
         update_message = listing.CompleteUpdate(self.entities)
         for address, client in self.registered_clients.items():
             self.send(client, (update_message,))
 
+        self.changed = False
+
     def handle_input(self, client, message):
+        self.changed = True
         entity_uid = message.entity_uid
         entity = self.entities.get(entity_uid)
         symbol = message.symbol
